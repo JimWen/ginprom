@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -100,6 +101,7 @@ type PromOpts struct {
 	ExcludeRegexStatus   string
 	ExcludeRegexEndpoint string
 	ExcludeRegexMethod   string
+	UseParamPath         bool
 }
 
 var defaultPromOpts = &PromOpts{}
@@ -130,8 +132,16 @@ func PromMiddleware(promOpts *PromOpts) gin.HandlerFunc {
 		c.Next()
 
 		status := fmt.Sprintf("%d", c.Writer.Status())
-		endpoint := c.Request.URL.Path
 		method := c.Request.Method
+
+		endpoint := c.Request.URL.Path
+		if promOpts.UseParamPath {
+			for _, p := range c.Params {
+				if p.Key != "" {
+					endpoint = strings.Replace(endpoint, p.Value, ":"+p.Key, 1)
+				}
+			}
+		}
 
 		lvs := []string{status, endpoint, method}
 
